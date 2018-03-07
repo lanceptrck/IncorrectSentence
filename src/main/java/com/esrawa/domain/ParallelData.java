@@ -1,39 +1,50 @@
 package com.esrawa.domain;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
 
 public class ParallelData {
 	
-	private String correctSentence;
-	private String incorrectSentence;
+	protected String correctSentence;
+	protected String incorrectSentence;
 	private String correctTags;
 	private String incorrectTags;
 	private ErrorType errorType;
 	private int errorDifference;
-	
-	private ParallelData(String correctSentence, String incorrectSentence, String correctTags, String incorrectTags) {
+	private String correctGramSequence;
+	private String incorrectGramSequence;
+
+	private ParallelData(String correctSentence, String incorrectSentence, String correctTags, String incorrectTags) throws IOException {
 		this.correctSentence = correctSentence;
 		this.incorrectSentence = incorrectSentence;
 		this.correctTags = correctTags;
 		this.incorrectTags = incorrectTags;
-	}
-	
-	private ParallelData(String correctSentence, String incorrectSentence, String correctTags, String incorrectTags,
-			ErrorType errorType, int errorDifference) {
-		super();
-		this.correctSentence = correctSentence;
-		this.incorrectSentence = incorrectSentence;
-		this.correctTags = correctTags;
-		this.incorrectTags = incorrectTags;
-		this.errorType = errorType;
-		this.errorDifference = errorDifference;
+		this.errorType = this.identifyErrorType();
+		this.errorDifference = this.identifyErrorDifference();
+		this.correctGramSequence = "";
+		this.incorrectGramSequence = "";
 	}
 
+	public ParallelData(ParallelData p) throws IOException {
+		this.correctSentence = p.correctSentence;
+		this.incorrectSentence = p.incorrectSentence;
+		this.correctTags = p.correctTags;
+		this.incorrectTags = p.incorrectTags;
+		this.errorType = p.identifyErrorType();
+		this.errorDifference = p.identifyErrorDifference();
+		this.correctGramSequence = "";
+	}
+	
 	public ParallelData() {
 		
 	}
 	
-	public ParallelData of(String correctSentence, String incorrectSentence, String correctTags, String incorrectTags) {
+	public ParallelData of(String correctSentence, String incorrectSentence, String correctTags, String incorrectTags) throws IOException {
 		return new ParallelData(correctSentence, incorrectSentence, correctTags, incorrectTags);
 	}
 		
@@ -87,12 +98,7 @@ public class ParallelData {
 		return ErrorType.NOERROR;
 	}
 	
-	public ParallelData getParallelDataWithErrorInfo() throws IOException {
-		return new ParallelData(this.correctSentence, this.incorrectSentence, 
-				this.correctTags, this.incorrectTags, this.identifyErrorType(), this.identifyErrorDifference());
-	}
-	
-	public ParallelData preprocessParallelData() {
+	public ParallelData preprocessParallelData() throws IOException {
 		
 		String correctSentence = "<empty> <start> " + this.correctSentence + " <end> <empty>";
 		String correctTags = "<empty> <start> " + this.correctTags + " <end> <empty>";
@@ -103,7 +109,91 @@ public class ParallelData {
 		
 	}
 	
-	public static int minDistance(String word1, String word2) {
+	private Set<String> getDistinctNgramOf(int gram){
+		
+		NgramIterator current = getTokenNgram(gram, correctSentence);
+		NgramIterator other = getTokenNgram(gram, incorrectSentence);
+		
+		return current.distinctGramsOfThisAndOf(other);
+		
+	}
+	
+	private Set<String> getDistinctWordNgramOf(int gram){
+		
+		NgramWordIterator current = new NgramWordIterator(gram, this.correctGramSequence);
+		NgramWordIterator other = new NgramWordIterator(gram, this.incorrectGramSequence);
+		
+		return current.distinctWordGramsOfThisAndOf(other);
+		
+	}
+	
+	public String getFrequentlyOccuringWord(Set<String> nGramSet) {
+
+		Map<String, Integer> frequentWordMap = converNgramSetToMap(nGramSet);
+		Entry<String, Integer> maxEntry = getMaxEntry(frequentWordMap);
+
+		if (maxEntry != null) {
+			return new String(maxEntry.getKey());
+		} else
+			throw new NullPointerException("Max Entry cannot be null!");
+
+	}
+	
+	private Map<String, Integer> converNgramSetToMap(Set<String> nGramSet) {
+		
+		ArrayList<String> frequentWordList = new ArrayList<String>();
+		Set<String> frequentWordSet = new HashSet<String>();
+		Map<String, Integer> frequentWordMap = new HashMap<String, Integer>();
+
+		for (String nGram : nGramSet) {
+			String nGramArr[] = nGram.split(" ");
+			for (int i = 0; i < nGramArr.length; i++) {
+				if (!nGramArr[i].equals("/")) {
+					frequentWordList.add(nGramArr[i]);
+					frequentWordSet.add(nGramArr[i]);
+				}
+
+			}
+		}
+
+		for (String word : frequentWordSet) {
+			frequentWordMap.put(word, 0);
+		}
+
+		for (String word : frequentWordList) {
+			frequentWordMap.replace(word, frequentWordMap.get(word) + 1);
+		}
+		
+		return frequentWordMap;
+		
+	}
+	
+	private Entry<String, Integer> getMaxEntry(Map<String, Integer> frequentWordMap){
+		
+		Entry<String, Integer> maxEntry = null;
+		for (Entry<String, Integer> entry : frequentWordMap.entrySet()) {
+			if (maxEntry == null || entry.getValue() > maxEntry.getValue()) {
+				maxEntry = entry;
+
+			}
+
+		}
+		
+		if(maxEntry == null) {
+			throw new NullPointerException("Max entry cannot be null, Check data integrity!");
+		} else 
+			return maxEntry;
+		
+	}
+
+	
+	private NgramIterator getTokenNgram(int gram, String sentence) {
+
+		return new NgramIterator(gram, sentence);
+
+	}
+
+	private static int minDistance(String word1, String word2) {
 		int len1 = word1.length();
 		int len2 = word2.length();
 
@@ -145,7 +235,8 @@ public class ParallelData {
 	
 	@Override
 	public String toString() {
-		return correctSentence+"|"+errorType;
+		return "["+correctSentence+"/"+incorrectSentence
+				+"\n|"+errorType+"]";
 	}
 	
 	

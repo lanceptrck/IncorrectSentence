@@ -43,8 +43,7 @@ public class ParallelDataDao {
 					jointSentenceArr[0], 
 					jointSentenceArr[1], 
 					jointTagArr[0], 
-					jointTagArr[1])
-					.getParallelDataWithErrorInfo());
+					jointTagArr[1]));
 		}
 		
 		if(parallelDataListTemp.isEmpty())

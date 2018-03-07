@@ -1,16 +1,14 @@
 package com.esrawa.domain;
 
-public class ErrorRule {
+public class ErrorRule extends ParallelData{
 	
 	private String ruleRepresentation;
+	private String correctGramSequence;
+	private String incorrectGramSequence;
+	private String wordSource;
+	private ErrorType errorType;
 	
-	public ErrorRule(String ruleRepresentation) {
-		this.ruleRepresentation = ruleRepresentation;
+	public ErrorRule() {
+		
 	}
-	
-	@Override
-	public String toString() {
-		return ruleRepresentation;
-	}
-
 }
